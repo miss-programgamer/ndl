@@ -21,10 +21,12 @@ public class Parser {
 		this.tokens = tokens;
 	}
 	
-	public void parse() {
+	public ScopeStatement parse() {
 		cursor = 0;
 		currentIndent = 0;
 		rootScope = matchScope(null);
+		
+		return rootScope;
 	}
 	
 	public void visit() {

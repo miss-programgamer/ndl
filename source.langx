@@ -1,0 +1,6 @@
+miguel var person
+simon var person
+if miguel equals simon
+	print miguel
+	print simon
+print miguel

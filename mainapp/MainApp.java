@@ -5,9 +5,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
+import interpreter.Interpreter;
 import lexer.Lexer;
 import lexer.Token;
 import parser.Parser;
+import parser.ScopeStatement;
 
 /** @author Miguel Arseneault */
 public class MainApp {
@@ -23,6 +25,7 @@ public class MainApp {
 	}
 	
 	public void run() {
+		// -= lexing =-
 		System.out.println("Lexing...");
 		String source = slurpFile(args[0]);
 		Lexer lexer = new Lexer(source);
@@ -32,12 +35,22 @@ public class MainApp {
 			System.out.println(token.toString());
 		}
 		
+		// -= parsing =-
 		System.out.println("\nParsing...");
 		Parser parser = new Parser(tokens);
-		parser.parse();
+		ScopeStatement ast = parser.parse();
 		
+		// -= visiting =-
 		System.out.println("\nVisiting...");
 		parser.visit();
+		
+		// -= interpreting =-
+		System.out.println("\nInterpreting...");
+		Interpreter interpreter = new Interpreter(ast);
+		interpreter.interpret();
+		
+		// -= done =-
+		System.out.println("\nDone!");
 	}
 	
 	private static String slurpFile(String filename) {

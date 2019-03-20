@@ -7,9 +7,9 @@ import java.util.ArrayList;
 
 import interpreter.Interpreter;
 import lexer.Lexer;
-import lexer.Token;
+import lexer.tokens.Token;
 import parser.Parser;
-import parser.ScopeStatement;
+import parser.statements.ScopeStatement;
 
 /** @author Miguel Arseneault */
 public class MainApp {
@@ -38,7 +38,7 @@ public class MainApp {
 		// -= parsing =-
 		System.out.println("\nParsing...");
 		Parser parser = new Parser(tokens);
-		ScopeStatement ast = parser.parse();
+		ScopeStatement root = parser.parse();
 		
 		// -= visiting =-
 		System.out.println("\nVisiting...");
@@ -46,7 +46,7 @@ public class MainApp {
 		
 		// -= interpreting =-
 		System.out.println("\nInterpreting...");
-		Interpreter interpreter = new Interpreter(ast);
+		Interpreter interpreter = new Interpreter(root);
 		interpreter.interpret();
 		
 		// -= done =-

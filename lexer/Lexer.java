@@ -2,6 +2,15 @@ package lexer;
 
 import java.util.ArrayList;
 
+import lexer.tokens.IndentToken;
+import lexer.tokens.IntegerToken;
+import lexer.tokens.KeywordToken;
+import lexer.tokens.NameToken;
+import lexer.tokens.OperatorToken;
+import lexer.tokens.StringToken;
+import lexer.tokens.SymbolToken;
+import lexer.tokens.Token;
+
 /** @author Miguel Arseneault */
 public class Lexer {
 	private String source;
@@ -16,6 +25,7 @@ public class Lexer {
 	}
 	
 	public ArrayList<Token> lex() {
+		tokens.add(new IndentToken(0));
 		if (getCursorCodePoint() == ' ') {
 			System.out.println("Indenting the first line is forbidden");
 		} else {
@@ -25,6 +35,8 @@ public class Lexer {
 				else if (matchOperator()) {}
 				else if (matchSymbol()) {}
 				else if (matchWord()) {}
+				else if (matchString()) {}
+				else if (matchInteger()) {}
 				else {
 					// Welp, encountered an invalid character, pack it up boys and girls and others
 					System.out.println("Invalid character encountered");
@@ -156,6 +168,41 @@ public class Lexer {
 			break tokenLoop;
 		}
 		
+		return matched;
+	}
+	
+	private boolean matchString() {
+		boolean matched = false;
+		int start = cursor;
+		
+		if (getCursorCodePoint() == '\"') {
+			++cursor;
+			while (getCursorCodePoint() != '\"') {
+				++cursor;
+			}
+			++cursor;
+			tokens.add(new StringToken(source.substring(start + 1, cursor - 1)));
+			matched = true;
+		}
+		
+		if (!matched) cursor = start;
+		return matched;
+	}
+	
+	private boolean matchInteger() {
+		boolean matched = false;
+		int start = cursor;
+		
+		if (Character.isDigit(getCursorCodePoint())) {
+			++cursor;
+			while (Character.isDigit(getCursorCodePoint())) {
+				++cursor;
+			}
+			tokens.add(new IntegerToken(Integer.parseInt(source.substring(start, cursor))));
+			matched = true;
+		}
+		
+		if (!matched) cursor = start;
 		return matched;
 	}
 }

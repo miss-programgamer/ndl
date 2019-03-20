@@ -1,16 +1,16 @@
-# ndl Github Repository
+# ndl Repository
 
 **BIG BOLD WARNING: THIS LANGUAGE IS NOT YET FUNCTIONAL OR USEFUL**
 
 **PLEASE WAIT FOR ME TO DEVELOP IT FAR ENOUGH THAT IT CAN ACTUALLY BE USED**
 
-# Misison Statement
+# Mission Statement
 
 ndl is a small scripting language which I plan to work on intermitently. It's an experiment of mine to see how expressive I can make the syntax while not making abritrary constraints. Library vendors would in theory be able to overload any part of the syntax for their own purposes. Just how much of this is actually feasible is what this project aims to determine. The ultimate goal is to make it so that one never needs to repeat themself for the sake of syntactic restrictions.
 
 # Consistent Declaration Form
 
-Every declarative statement in ndl is of the form [name] [type] [other...] where the type is usually a keyword for most statements, but is a type name for variables instead. At least, this is the aim, but right now the var keyword is still required for variables. This is because the parser cannot yet determine with 100% certainty what is a type name, variable name or function name. This will be fixed with a stack based parsing technique in the future.
+Every declarative statement in ndl is of the form `[name] [type] [other...]` where the type is usually a keyword for most statements, but is a type name for variables instead. At least, this is the aim, but right now the `var` keyword is still required for variables. This is because the parser cannot yet determine with 100% certainty what is a type name, variable name or function name. This will be fixed with a stack based parsing technique in the future.
 
 # Indentation as Scope
 

@@ -2,8 +2,8 @@ package interpreter;
 
 import java.util.HashMap;
 
-import parser.FunctionStatement;
-import parser.ScopeStatement;
+import parser.statements.FunctionStatement;
+import parser.statements.ScopeStatement;
 
 public class Scope {
 	private ScopeStatement statement;
@@ -15,8 +15,8 @@ public class Scope {
 		variables = new HashMap<String, Variable>();
 	}
 	
-	public boolean addVariable(String variableName) {
-		return variables.put(variableName, new Variable(variableName, null)) != null;
+	public Variable addVariable(String variableName, Value value) {
+		return variables.put(variableName, new Variable(variableName, value));
 	}
 	
 	public ScopeStatement getStatement() {

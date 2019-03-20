@@ -10,3 +10,9 @@
 /FunctionStatement.class
 /Parser$1.class
 /Parser$2.class
+/LiteralExpression.class
+/TypeStatement.class
+/MatchStack.class
+/MatchStack$Match.class
+/Type.class
+/BuiltinType.class

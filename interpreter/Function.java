@@ -1,6 +1,6 @@
 package interpreter;
 
-import parser.FunctionStatement;
+import parser.statements.FunctionStatement;
 
 public class Function {
 	private FunctionStatement statement;

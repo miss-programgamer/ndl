@@ -1,44 +1,55 @@
 package interpreter;
 
+import java.util.HashSet;
 import java.util.Stack;
 
-import parser.CallExpression;
-import parser.CallStatement;
-import parser.Expression;
-import parser.IfStatement;
-import parser.ScopeStatement;
-import parser.Statement;
-import parser.VariableExpression;
-import parser.VariableStatement;
+import parser.expressions.CallExpression;
+import parser.expressions.Expression;
+import parser.expressions.LiteralExpression;
+import parser.expressions.VariableExpression;
+import parser.statements.CallStatement;
+import parser.statements.IfStatement;
+import parser.statements.ScopeStatement;
+import parser.statements.Statement;
+import parser.statements.VariableStatement;
+import parser.types.BuiltinType;
 
 public class Interpreter {
-	private ScopeStatement ast;
+	private ScopeStatement root;
 	private Stack<Scope> scopes;
+	private HashSet<String> builtinFunctions;
 	
-	public Interpreter(ScopeStatement ast) {
-		this.ast = ast;
+	public Interpreter(ScopeStatement root) {
+		this.root = root;
 		
 		scopes = new Stack<Scope>();
+		builtinFunctions = new HashSet<String>();
+		
+		// -= init set of builtin functions =-
+		builtinFunctions.add("equals");
+		builtinFunctions.add("printLine");
 	}
 	
 	public void interpret() {
-		executeStatement(ast);
+		executeStatement(root);
 	}
 	
-	private Object computeValue(Expression expression) {
-		Object value = null;
+	private Value computeValue(Expression expression) {
+		Value value = null;
 		
 		if (expression instanceof VariableExpression) {
 			value = computeVariable((VariableExpression)expression);
 		} else if (expression instanceof CallExpression) {
 			value = computeCall((CallExpression)expression);
+		} else if (expression instanceof LiteralExpression) {
+			value = computeLiteral((LiteralExpression)expression);
 		}
 		
 		return value;
 	}
 	
-	private Object computeVariable(VariableExpression variableExpression) {
-		Object value = null;
+	private Value computeVariable(VariableExpression variableExpression) {
+		Value value = null;
 		
 		for (int index = scopes.size() - 1; index >= 0; --index) {
 			Scope scope = scopes.get(index);
@@ -51,39 +62,82 @@ public class Interpreter {
 		return value;
 	}
 	
-	private Object computeCall(CallExpression callExpression) {
-		Object value = null;
+	private Value computeCall(CallExpression callExpression) {
+		Value value = null;
 		
-		for (int index = scopes.size() - 1; index >= 0; --index) { 
-			Scope scope = scopes.get(index);
-			Function function = scope.getFunction(callExpression.getOperator());
-			if (function != null) {
-				// -= feed argument and result variables to the function =-
-				scopes.push(new Scope(new ScopeStatement(scopes.peek().getStatement())));
-				for (VariableStatement variableStatement : function.getStatement().getArguments()) {
-					executeVariable(variableStatement);
-				}
-				for (VariableStatement variableStatement : function.getStatement().getResults()) {
-					executeVariable(variableStatement);
-				}
-				
-				// -= call function =-
-				executeStatement(scopes.peek().getStatement());
-				
-				// -= set return value =-
-				if (scopes.peek().getVariables().size() > 0) {
-					value = scopes.peek().getVariables().get(function.getStatement().getResults().get(0).getName());
-				}
-				
-				// -= remove arg scope and break loop =-
-				scopes.pop();
+		if (builtinFunctions.contains(callExpression.getOperator())) {
+			switch (callExpression.getOperator()) {
+			case "equals":
+				Value arg1 = computeValue(callExpression.getArgument(0));
+				Value arg2 = computeValue(callExpression.getArgument(1));
+				value = builtinEquals(arg1, arg2);
 				break;
-			} else {
-				System.out.println("Unable to call function "+callExpression.getOperator());
+			case "printLine":
+				if (callExpression.getArgumentCount() == 1) {
+					value = builtinPrintLine(new Value[] {computeValue(callExpression.getArgument(0))});
+				} else if (callExpression.getArgumentCount() == 2) {
+					value = builtinPrintLine(new Value[] {computeValue(callExpression.getArgument(0)), computeValue(callExpression.getArgument(1))});
+				}
+				break;
+			}
+		} else {
+			for (int index = scopes.size() - 1; index >= 0; --index) { 
+				Scope scope = scopes.get(index);
+				Function function = scope.getFunction(callExpression.getOperator());
+				if (function != null) {
+					// -= feed argument and result variables to the function =-
+					scopes.push(new Scope(new ScopeStatement(scopes.peek().getStatement())));
+					for (VariableStatement variableStatement : function.getStatement().getArguments()) {
+						executeVariable(variableStatement);
+					}
+					for (VariableStatement variableStatement : function.getStatement().getResults()) {
+						executeVariable(variableStatement);
+					}
+					
+					// -= call function =-
+					executeStatement(scopes.peek().getStatement());
+					
+					// -= set return value =-
+					if (scopes.peek().getVariables().size() > 0) {
+						value = scopes.peek().getVariables().get(function.getStatement().getResults().get(0).getName()).getValue();
+					}
+					
+					// -= remove arg scope and break loop =-
+					scopes.pop();
+					break;
+				} else {
+					System.out.println("Unable to call function "+callExpression.getOperator());
+				}
 			}
 		}
 		
 		return value;
+	}
+	
+	private Value builtinEquals(Value lhs, Value rhs) {
+		boolean result = false;
+		
+		if (lhs.getType().equals(rhs.getType()) && lhs.getValue().equals(rhs.getValue())) {
+			result = true;
+		}
+		
+		return new Value(BuiltinType.BooleanType, result);
+	}
+	
+	private Value builtinPrintLine(Value[] arguments) {
+		for (Value argument : arguments) {
+			if (argument.getType() == BuiltinType.StringType) {
+				System.out.println((String)argument.getValue());
+			} else {
+				System.out.println("undefined");
+			}
+		}
+		
+		return null;
+	}
+	
+	private Value computeLiteral(LiteralExpression literalExpression) {
+		return new Value(BuiltinType.StringType, literalExpression.getValue().getValue());
 	}
 	
 	private void executeStatement(Statement statement) {
@@ -113,12 +167,12 @@ public class Interpreter {
 	}
 	
 	private void executeVariable(VariableStatement variableStatement) {
-		scopes.peek().addVariable(variableStatement.getName());
+		scopes.peek().addVariable(variableStatement.getName(), computeValue(variableStatement.getValue()));
 	}
 	
 	private void executeIf(IfStatement ifStatement) {
-		Object value = computeValue(ifStatement.getCondition());
-		if (value instanceof Boolean && value.equals(true)) {
+		Value value = computeValue(ifStatement.getCondition());
+		if (value.getType() == BuiltinType.BooleanType && value.getValue().equals(true)) {
 			executeStatement(ifStatement.getBody());
 		}
 	}

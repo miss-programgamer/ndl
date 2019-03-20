@@ -1,23 +1,19 @@
 package interpreter;
 
 public class Variable {
-	private String type;
-	private Object value;
+	private String name;
+	private Value value;
 	
-	public Variable(String type, Object value) {
-		this.type = type;
+	public Variable(String name, Value value) {
+		this.name = name;
 		this.value = value;
 	}
 	
-	public String getType() {
-		return type;
+	public String getName() {
+		return name;
 	}
 	
-	public Object getValue() {
+	public Value getValue() {
 		return value;
-	}
-	
-	public void setValue(Object value) {
-		this.value = value;
 	}
 }

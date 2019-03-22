@@ -1,11 +1,33 @@
-miguel var String = "Miguel"
-simon var String = "Miguel"
-count var Integer = 32
+// Line comment yooo
+/*
+	multiline comment
+*/
+/*
+	/*
+		nested multiline comments!
+	*/
+*/
+miguel String = "Miguel"
+simon String = "Miguel"
 if miguel equals simon
-	printLine "miguel"
-	printLine "simon"
+	print_line "miguel"
+	print_line "simon"
 	if simon equals miguel
-		printLine "asdf movie is cool"
-if "something" equals "nothing"
-	printLine "something equals nothing"
-printLine ("Hello World", "Hello again")
+		print_line "asdf movie is cool"
+
+simon = "Simon"
+if miguel equals simon
+	print_line "Miguel equals Simon"
+
+print_line ("Hello World", "Hello again")
+
+count Integer = 16
+while not (count equals 0)
+	print_line ("Count value:", count)
+	count = count - 1
+print_line "Not going anymore"
+
+if 0 equals 0
+	if 1 equals 1
+		if 2 equals 2
+			print_line "oh my god"

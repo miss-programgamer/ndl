@@ -1,37 +1,40 @@
 package lexer.tokens;
 
+import java.util.HashMap;
+
 public enum OperatorToken implements Token {
 	PlusToken("+"),
 	MinusToken("-"),
 	TimesToken("*"),
 	DivideToken("/"),
 	ModulusToken("%"),
-	PowerToken("^"),
+	PowerToken("^");
 	
-	IsToken("is", true),
-	AndToken("and", true),
-	OrToken("or", true),
-	NotToken("not", true);
+	private static HashMap<String, OperatorToken> operatorMap;
+	
+	static {
+		operatorMap = new HashMap<String, OperatorToken>();
+		for (OperatorToken builtinType : OperatorToken.values()) {
+			operatorMap.put(builtinType.getOperator(), builtinType);
+		}
+	}
+	
+	public static OperatorToken get(String name) {
+		return operatorMap.get(name);
+	}
+	
+	public static boolean contains(String name) {
+		return operatorMap.containsKey(name);
+	}
 	
 	private final String operator;
-	private final boolean isWord;
-	
-	private OperatorToken(String operator, boolean isWord) {
-		this.operator = operator;
-		this.isWord = isWord;
-	}
 	
 	private OperatorToken(String operator) {
 		this.operator = operator;
-		isWord = false;
 	}
 	
 	public String getOperator() {
 		return operator;
-	}
-	
-	public boolean isWord() {
-		return isWord;
 	}
 	
 	@Override

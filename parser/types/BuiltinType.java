@@ -24,7 +24,7 @@ public enum BuiltinType implements Type {
 		return typeMap.containsKey(name);
 	}
 
-	private String name;
+	private final String name;
 	
 	private BuiltinType(String name) {
 		this.name = name;

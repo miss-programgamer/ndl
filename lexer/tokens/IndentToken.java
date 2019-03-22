@@ -1,18 +1,18 @@
 package lexer.tokens;
 
 public class IndentToken implements Token {
-	private int size;
+	private int indent;
 	
 	public IndentToken(int length) {
-		this.size = length;
+		this.indent = length;
 	}
 	
-	public int getSize() {
-		return size;
+	public int getIndent() {
+		return indent;
 	}
 	
 	@Override
 	public String toString() {
-		return "---indent: "+size;
+		return "---indent: "+indent;
 	}
 }

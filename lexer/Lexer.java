@@ -25,23 +25,18 @@ public class Lexer {
 	}
 	
 	public ArrayList<Token> lex() {
-		tokens.add(new IndentToken(0));
-		if (getCursorCodePoint() == ' ') {
-			System.out.println("Indenting the first line is forbidden");
-		} else {
-			while (cursor < source.length()) {
-				if (matchSpaces()) {}
-				else if (matchIndent()) {}
-				else if (matchOperator()) {}
-				else if (matchSymbol()) {}
-				else if (matchWord()) {}
-				else if (matchString()) {}
-				else if (matchInteger()) {}
-				else {
-					// Welp, encountered an invalid character, pack it up boys and girls and others
-					System.out.println("Invalid character encountered");
-					break;
-				}
+		while (cursor < source.length()) {
+			if (matchSpaces());
+			else if (matchComment());
+			else if (matchIndentToken());
+			else if (matchOperator());
+			else if (matchSymbolToken());
+			else if (matchWord());
+			else if (matchString());
+			else if (matchInteger());
+			else {
+				System.out.println("Invalid character encountered");
+				break;
 			}
 		}
 		
@@ -56,40 +51,105 @@ public class Lexer {
 		}
 	}
 	
+	private boolean matchCodePoint(int codePoint) {
+		boolean match = false;
+		
+		if (getCursorCodePoint() == codePoint) {
+			++cursor;
+			match = true;
+		}
+		
+		return match;
+	}
+	
+	private boolean matchAlphabetic() {
+		boolean match = false;
+		
+		if (Character.isAlphabetic(getCursorCodePoint())) {
+			++cursor;
+			match = true;
+		}
+		
+		return match;
+	}
+	
+	private boolean matchDigit() {
+		boolean match = false;
+		
+		if (Character.isDigit(getCursorCodePoint())) {
+			++cursor;
+			match = true;
+		}
+		
+		return match;
+	}
+	
+	private boolean matchString(String str) {
+		boolean match = false;
+		
+		if (source.regionMatches(cursor, str, 0, str.length())) {
+			cursor += str.length();
+			match = true;
+		}
+		
+		return match;
+	}
+	
 	private boolean matchSpaces() {
 		boolean matched = false;
 		
-		while (getCursorCodePoint() == ' ' || getCursorCodePoint() == '\t') {
+		while (matchCodePoint(' ') || matchCodePoint('\t')) {
 			matched = true;
-			++cursor;
 		}
 		
 		return matched;
 	}
 	
-	private boolean matchIndent() {
+	private boolean matchComment() {
 		boolean matched = false;
 		
-		if (getCursorCodePoint() == '\r') {
-			++cursor;
-		}
-		
-		if (getCursorCodePoint() == '\n') {
-			matched = true;
-			
-			++cursor;
-			int indent = 0;
-			while (getCursorCodePoint() == ' ' || getCursorCodePoint() == '\t') {
-				switch (getCursorCodePoint()) {
-				case ' ':
-					++indent; break;
-				case '\t':
-					indent += 4; break;
-				}
-				
+		if (matchString("//")) {
+			while (getCursorCodePoint() != '\n') {
 				++cursor;
 			}
+			matched = true;
+		} else if (matchString("/*")) {
+			int nestLevel = 0;
+			while (true) {
+				if (matchString("/*")) {
+					++nestLevel;
+				} else if (matchString("*/")) {
+					if (nestLevel > 0) {
+						--nestLevel;
+					} else {
+						break;
+					}
+				} else {
+					++cursor;
+				}
+			}
+			matched = true;
+		}
+		
+		return matched;
+	}
+	
+	private boolean matchIndentToken() {
+		boolean matched = false;
+		
+		if (matchCodePoint('\n')) {
+			int indent = 0;
+			while (true) {
+				if (matchCodePoint(' ')) {
+					++indent;
+				} else if (matchCodePoint('\t')) {
+					indent += 4;
+				} else {
+					break;
+				}
+			}
 			tokens.add(new IndentToken(indent / 4));
+			matched = true;
 		}
 		
 		return matched;
@@ -98,49 +158,33 @@ public class Lexer {
 	private boolean matchWord() {
 		boolean matched = false;
 		
-		if (Character.isAlphabetic(getCursorCodePoint())) {
-			int start = cursor;
-			do {
-				++cursor;
-			} while (
-				Character.isAlphabetic(getCursorCodePoint()) ||
-				Character.isDigit(getCursorCodePoint())
-			);
+		int start = cursor;
+		if (matchAlphabetic()) {
+			while (matchAlphabetic() || matchDigit() || matchCodePoint('_'));
 			
 			String word = source.substring(start, cursor);
-			for (KeywordToken token : KeywordToken.values()) {
-				if (token.getKeyword().equals(word)) {
-					matched = true;
-					tokens.add(token);
-					break;
-				}
-			}
-			
-			if (!matched) {
-				matched = true;
+			if (KeywordToken.contains(word)) {
+				tokens.add(KeywordToken.get(word));
+			} else {
 				tokens.add(new NameToken(word));
 			}
+			
+			matched = true;
 		}
 		
 		return matched;
 	}
 	
-	private boolean matchSymbol() {
+	private boolean matchSymbolToken() {
 		boolean matched = false;
 		
-		tokenLoop:
 		for (SymbolToken token : SymbolToken.values()) {
-			int start = cursor;
 			String symbol = token.getSymbol();
-			for (int index = 0; index < symbol.length(); ++index) {
-				if (symbol.codePointAt(index) != source.codePointAt(start + index)) {
-					continue tokenLoop;
-				}
+			if (matchString(symbol)) {
+				tokens.add(token);
+				matched = true;
+				break;
 			}
-			matched = true;
-			cursor += symbol.length();
-			tokens.add(token);
-			break tokenLoop;
 		}
 		
 		return matched;
@@ -149,23 +193,13 @@ public class Lexer {
 	private boolean matchOperator() {
 		boolean matched = false;
 		
-		tokenLoop:
 		for (OperatorToken token : OperatorToken.values()) {
-			// TODO Split inside of this loop depenting on value of isWord()
-			int start = cursor;
 			String operator = token.getOperator();
-			for (int index = 0; index < operator.length(); ++index) {
-				if (operator.codePointAt(index) != source.codePointAt(start + index)) {
-					continue tokenLoop;
-				}
+			if (matchString(operator)) {
+				tokens.add(token);
+				matched = true;
+				break;
 			}
-			if (token.isWord() && Character.isAlphabetic(source.codePointAt(cursor + 1))) {
-				continue tokenLoop;
-			}
-			matched = true;
-			cursor += operator.length();
-			tokens.add(token);
-			break tokenLoop;
 		}
 		
 		return matched;
@@ -175,12 +209,10 @@ public class Lexer {
 		boolean matched = false;
 		int start = cursor;
 		
-		if (getCursorCodePoint() == '\"') {
-			++cursor;
-			while (getCursorCodePoint() != '\"') {
+		if (matchCodePoint('\"')) {
+			while (!matchCodePoint('\"')) {
 				++cursor;
 			}
-			++cursor;
 			tokens.add(new StringToken(source.substring(start + 1, cursor - 1)));
 			matched = true;
 		}
@@ -193,16 +225,12 @@ public class Lexer {
 		boolean matched = false;
 		int start = cursor;
 		
-		if (Character.isDigit(getCursorCodePoint())) {
-			++cursor;
-			while (Character.isDigit(getCursorCodePoint())) {
-				++cursor;
-			}
+		if (matchDigit()) {
+			while (matchDigit());
 			tokens.add(new IntegerToken(Integer.parseInt(source.substring(start, cursor))));
 			matched = true;
 		}
 		
-		if (!matched) cursor = start;
 		return matched;
 	}
 }

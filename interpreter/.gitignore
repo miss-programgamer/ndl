@@ -3,3 +3,9 @@
 /Function.class
 /Variable.class
 /Value.class
+/CustomFunction.class
+/Interpreter$CustomFunction.class
+/Interpreter$Function.class
+/Interpreter$PrintLineFunction.class
+/Interpreter$Scope.class
+/BuiltinFunction.class

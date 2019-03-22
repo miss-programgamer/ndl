@@ -1,9 +1,9 @@
 package mainapp;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 import interpreter.Interpreter;
 import lexer.Lexer;
@@ -25,39 +25,79 @@ public class MainApp {
 	}
 	
 	public void run() {
+		// -= input =-
+		String source = null;
+		if (args.length >= 1) {
+			source = slurpFile(args[0]);
+		}
+		
+		boolean verbose = false;
+		if (args.length >= 2 && args[1].equals("-v")) {
+			verbose = true;
+		}
+		
 		// -= lexing =-
-		System.out.println("Lexing...");
-		String source = slurpFile(args[0]);
+		if (verbose) {
+			System.out.println("Lexing...");
+		}
+		
 		Lexer lexer = new Lexer(source);
 		ArrayList<Token> tokens = lexer.lex();
 		
-		for (Token token : tokens) {
-			System.out.println(token.toString());
+		if (verbose) {
+			for (Token token : tokens) {
+				System.out.println(token.toString());
+			}
+			System.out.println();
 		}
 		
 		// -= parsing =-
-		System.out.println("\nParsing...");
-		Parser parser = new Parser(tokens);
+		if (verbose) {
+			System.out.println("Parsing...");
+		}
+		
+		Parser parser = new Parser(tokens, verbose);
 		ScopeStatement root = parser.parse();
 		
+		if (verbose) {
+			System.out.println();
+		}
+		
 		// -= visiting =-
-		System.out.println("\nVisiting...");
-		parser.visit();
+		if (verbose) {
+			System.out.println("Visiting...");
+			parser.visit();
+			System.out.println();
+		}
 		
 		// -= interpreting =-
-		System.out.println("\nInterpreting...");
+		System.out.println("Interpreting...");
 		Interpreter interpreter = new Interpreter(root);
 		interpreter.interpret();
+		System.out.println();
 		
 		// -= done =-
-		System.out.println("\nDone!");
+		System.out.println("Done!");
 	}
 	
 	private static String slurpFile(String filename) {
+		StringBuilder content = new StringBuilder();
+		
+		Scanner file = null;
 		try {
-			return new String(Files.readAllBytes(Paths.get(filename)));
-		} catch (IOException e) {
-			return "";
+			file = new Scanner(new File(filename));
+			while (file.hasNextLine()) {
+				content.append(file.nextLine());
+				if (file.hasNextLine()) {
+					content.append('\n');
+				}
+			}
+		} catch (IOException ex) {
+			content.delete(0, content.length());
+		} finally {
+			file.close();
 		}
+		
+		return content.toString();
 	}
 }

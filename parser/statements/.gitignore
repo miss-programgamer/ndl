@@ -5,3 +5,5 @@
 /TypeStatement.class
 /VariableStatement.class
 /Statement.class
+/WhileStatement.class
+/AssignmentStatement.class

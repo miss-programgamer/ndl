@@ -3,6 +3,7 @@ package parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import interpreter.BuiltinFunction;
 import interpreter.Value;
 import lexer.tokens.*;
 import parser.expressions.*;
@@ -11,20 +12,25 @@ import parser.types.*;
 
 public class Parser {
 	private ArrayList<Token> tokens;
+	private boolean verbose;
 	
 	private ScopeStatement rootScope;
 	private ScopeStatement currentScope;
 	private int cursor;
 	private int currentIndent;
 	
-	public Parser(ArrayList<Token> tokens) {
+	public Parser(ArrayList<Token> tokens, boolean verbose) {
 		this.tokens = tokens;
+		this.verbose = verbose;
 	}
 	
 	public ScopeStatement parse() {
 		cursor = 0;
-		currentIndent = -1;
-		rootScope = matchScope(null);
+		currentIndent = 0;
+		
+		rootScope = new ScopeStatement(null);
+		currentScope = rootScope;
+		matchStatements();
 		
 		return rootScope;
 	}
@@ -47,45 +53,64 @@ public class Parser {
 	}
 	
 	private void log(String out) {
-		System.out.println("Cursor: "+cursor+"\t- "+out);
+		if (verbose) {
+			System.out.println("Cursor: "+cursor+"\t- "+out);
+		}
 	}
 	
-	private ScopeStatement matchScope(ScopeStatement outer) {
-		ScopeStatement match = new ScopeStatement(outer);
-		currentScope = match;
-		
-		if (matchIndentUp()) {
-			while (cursor < tokens.size()) {
-				Statement statement;
-				if (matchIndentSame()) {
-					// Consume indent tokens that are of the same indent level
-				} else if (matchIndentDown()) {
-					break;
-				} else if ((statement = matchVariable()) != null) {
-					match.addStatement(statement);
-					match.addVariable((VariableStatement)statement);
-				} else if ((statement = matchFunction()) != null) {
-					match.addFunction((FunctionStatement)statement);
-				} else if ((statement = matchIf()) != null) {
-					match.addStatement(statement);
-				} else if ((statement = matchCall()) != null) {
-					match.addStatement(statement);
-				} else {
-					// Invalid token sequence
-					log("Invalid token sequence encountered "+getCursorToken().toString());
-					break;
-				}
+	private void matchStatements() {
+		Statement statement;
+		while (cursor < tokens.size()) {
+			if (matchIndentDown() || matchLast()) {
+				break;
+			}
+			else if (matchSeparator());
+			else if ((statement = matchVariable()) != null) {
+				currentScope.addStatement(statement);
+				currentScope.addVariable((VariableStatement)statement);
+			}
+			else if ((statement = matchAssignment()) != null) {
+				currentScope.addStatement(statement);
+			}
+			else if ((statement = matchFunction()) != null) {
+				currentScope.addFunction((FunctionStatement)statement);
+			}
+			else if ((statement = matchIf()) != null) {
+				currentScope.addStatement(statement);
+			}
+			else if ((statement = matchWhile()) != null) {
+				currentScope.addStatement(statement);
+			}
+			else if ((statement = matchCall()) != null) {
+				currentScope.addStatement(statement);
+			}
+			else {
+				// Invalid token sequence
+				log("Invalid token sequence encountered "+getCursorToken().toString());
+				break;
 			}
 		}
+	}
+	
+	private ScopeStatement matchScope() {
+		ScopeStatement match = null;
 		
-		currentScope = match.getOuterScope();
+		if (matchIndentUp()) {
+			currentScope = new ScopeStatement(currentScope);
+			match = currentScope;
+			
+			matchStatements();
+			
+			currentScope = currentScope.getOuterScope();
+		}
+		
 		return match;
 	}
 	
 	private boolean matchIndentUp() {
 		boolean match = false;
 		
-		if (getCursorToken() instanceof IndentToken && ((IndentToken)getCursorToken()).getSize() - currentIndent > 0) {
+		if (getCursorToken() instanceof IndentToken && ((IndentToken)getCursorToken()).getIndent() > currentIndent) {
 			match = true;
 			++currentIndent;
 			log("Matched indent up! (indent now "+currentIndent+")");
@@ -97,7 +122,7 @@ public class Parser {
 	private boolean matchIndentDown() {
 		boolean match = false;
 		
-		if (getCursorToken() instanceof IndentToken && ((IndentToken)getCursorToken()).getSize() - currentIndent < 0) {
+		if (getCursorToken() instanceof IndentToken && ((IndentToken)getCursorToken()).getIndent() < currentIndent) {
 			match = true;
 			--currentIndent;
 			log("Matched indent down! (indent now "+currentIndent+")");
@@ -106,13 +131,25 @@ public class Parser {
 		return match;
 	}
 	
-	private boolean matchIndentSame() {
+	private boolean matchSeparator() {
 		boolean match = false;
 		
-		if (getCursorToken() instanceof IndentToken && ((IndentToken)getCursorToken()).getSize() == currentIndent) {
+		if (getCursorToken() instanceof IndentToken) {
+			if (getCursorToken(1) instanceof IndentToken) {
+				++cursor;
+				match = true;
+				log("Matched separator!");
+			} else if (((IndentToken)getCursorToken()).getIndent() == currentIndent) {
+				++cursor;
+				match = true;
+				log("Matched separator!");
+			} else if (((IndentToken)getCursorToken()).getIndent() != currentIndent) {
+				match = true;
+				log("Matched separator!");
+			}
+		} else if (matchLast()) {
 			match = true;
-			++cursor;
-			log("Matched scope same!");
+			log("Matched separator!");
 		}
 		
 		return match;
@@ -136,7 +173,7 @@ public class Parser {
 		String name = matchName();
 		if (name != null && currentScope.getVariable(name) != null) {
 			match = name;
-			log("Matched variable name "+name+"!");
+			log("Matched variable name ["+name+"]!");
 		}
 		
 		if (match == null) cursor = start;
@@ -148,9 +185,14 @@ public class Parser {
 		int start = cursor;
 		
 		String name = matchName();
-		if (name != null && currentScope.getVariable(name) == null) { // At this point, we determine that if it's not a variable, then it must be a function. This assumption is verified later in a second pass
+		OperatorToken operatorToken;
+		if (name == null && (operatorToken = matchOperator()) != null) {
+			name = operatorToken.getOperator();
+		}
+		
+		if (currentScope.getFunction(name) != null || BuiltinFunction.contains(name) || OperatorToken.contains(name)) {
 			match = name;
-			log("Matched function name "+name+"!");
+			log("Matched function name ["+match+"]!");
 		}
 		
 		if (match == null) cursor = start;
@@ -207,19 +249,19 @@ public class Parser {
 		if (getCursorToken() instanceof SymbolToken && getCursorToken() == token) {
 			match = true;
 			++cursor;
-			log("Matched symbol \""+token.getSymbol()+"\"!");
+			log("Matched symbol "+token.getSymbol()+"!");
 		}
 		
 		return match;
 	}
 	
-	private boolean matchOperator(OperatorToken token) {
-		boolean match = false;
+	private OperatorToken matchOperator() {
+		OperatorToken match = null;
 		
-		if (getCursorToken() instanceof OperatorToken && getCursorToken() == token) {
-			match = true;
+		if (getCursorToken() instanceof OperatorToken) {
+			match = (OperatorToken)getCursorToken();
 			++cursor;
-			log("Matches operator ["+token.getOperator()+"]!");
+			log("Matched operator "+match.getOperator()+"!");
 		}
 		
 		return match;
@@ -230,15 +272,17 @@ public class Parser {
 		int start = cursor;
 		
 		String name = matchUndefinedName();
-		if (name != null && matchKeyword(KeywordToken.VarToken)) {
+		if (name != null) {
 			String type = matchTypeName();
 			if (type != null) {
 				Expression value = null;
 				if (matchSymbol(SymbolToken.EqualsToken)) {
 					value = matchExpression();
 				}
-				match = new VariableStatement(name, BuiltinType.get(type), value);
-				log("Matched variable "+name+" "+type+"!");
+				if (matchSeparator()) {
+					match = new VariableStatement(name, BuiltinType.get(type), value);
+					log("Matched variable "+name+" "+type+"!");
+				}
 			}
 		}
 		
@@ -246,7 +290,23 @@ public class Parser {
 		return match;
 	}
 	
+	private AssignmentStatement matchAssignment() {
+		AssignmentStatement match = null;
+		
+		String name = matchVariableName();
+		if (name != null && matchSymbol(SymbolToken.EqualsToken)) {
+			Expression value = matchExpression();
+			if (value != null && matchSeparator()) {
+				match = new AssignmentStatement(name, value);
+			}
+		}
+		
+		return match;
+	}
+	
 	private FunctionStatement matchFunction() {
+		// TODO This isn't functional yet, don't try to make functions
+		
 		FunctionStatement match = null;
 		int start = cursor;
 		
@@ -259,15 +319,19 @@ public class Parser {
 				if (matchSymbol(SymbolToken.CommaToken)) {
 					VariableStatement arg2 = matchVariable();
 					if (arg2 != null) {
-						ScopeStatement body = matchScope(currentScope);
+						ScopeStatement body = matchScope();
 						argumentList.add(arg1);
 						argumentList.add(arg2);
-						match = new FunctionStatement(name, argumentList, resultList, body);
+						if (matchSeparator()) {
+							match = new FunctionStatement(name, argumentList, resultList, body);
+						}
 					}
 				} else {
-					ScopeStatement body = matchScope(currentScope);
+					ScopeStatement body = matchScope();
 					argumentList.add(arg1);
-					match = new FunctionStatement(name, argumentList, resultList, body);
+					if (matchSeparator()) {
+						match = new FunctionStatement(name, argumentList, resultList, body);
+					}
 				}
 			}
 		}
@@ -283,10 +347,29 @@ public class Parser {
 		if (matchKeyword(KeywordToken.IfToken)) {
 			Expression condition = matchExpression();
 			if (condition != null) {
-				ScopeStatement body = matchScope(currentScope);
-				if (body != null) {
+				ScopeStatement body = matchScope();
+				if (body != null && matchSeparator()) {
 					match = new IfStatement(condition, body);
 					log("Matched if!");
+				}
+			}
+		}
+
+		if (match == null) cursor = start;
+		return match;
+	}
+	
+	private WhileStatement matchWhile() {
+		WhileStatement match = null;
+		int start = cursor;
+		
+		if (matchKeyword(KeywordToken.WhileToken)) {
+			Expression condition = matchExpression();
+			if (condition != null) {
+				ScopeStatement body = matchScope();
+				if (body != null && matchSeparator()) {
+					match = new WhileStatement(condition, body);
+					log("Matched while!");
 				}
 			}
 		}
@@ -360,8 +443,8 @@ public class Parser {
 		CallExpression match = null;
 		int start = cursor;
 		
-		String operator = matchFunctionName();
-		if (operator != null) {
+		String operator;
+		if ((operator = matchFunctionName()) != null) {
 			Expression argument = matchExpression();
 			if (argument != null) {
 				List<Expression> arguments = new ArrayList<Expression>();
@@ -501,12 +584,16 @@ public class Parser {
 		int start = cursor;
 		
 		CallExpression call = matchCallExpression();
-		if (call != null) {
+		if (call != null && matchSeparator()) {
 			match = new CallStatement(call);
 			log("Matched call statement!");
 		}
 		
 		if (match == null) cursor = start;
 		return match;
+	}
+	
+	private boolean matchLast() {
+		return cursor >= tokens.size();
 	}
 }

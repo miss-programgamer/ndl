@@ -6,3 +6,5 @@
 /StringToken.class
 /SymbolToken.class
 /Token.class
+/EndToken.class
+/LastToken.class

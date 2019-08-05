@@ -6,7 +6,7 @@
 
 # Mission Statement
 
-ndl is a small scripting language which I plan to work on intermitently. It's an experiment of mine to see how expressive I can make the syntax while not making abritrary constraints. Library vendors would in theory be able to overload any part of the syntax for their own purposes. Just how much of this is actually feasible is what this project aims to determine. The ultimate goal is to make it so that one never needs to repeat themself for the sake of syntactic restrictions.
+ndl is a small scripting language which I plan to work on intermitently. It's an experiment of mine to see how expressive I can make the syntax while not making arbitrary constraints. Library vendors would in theory be able to overload any part of the syntax for their own purposes. Just how much of this is actually feasible is what this project aims to determine. The ultimate goal is to make it so that one never needs to repeat themself for the sake of syntactic restrictions.
 
 # Consistent Declaration Form
 
